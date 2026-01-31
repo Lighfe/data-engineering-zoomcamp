@@ -14,9 +14,10 @@ import os
 @click.option('--pg-port', default=5432, type=int, help='PostgreSQL port')
 @click.option('--pg-db', default='ny_taxi', help='PostgreSQL database name')
 @click.option('--file-path', required=True, help='Path to the local parquet file')
+@click.option('--lookup-path', required=True, help='Path to the zone lookup CSV')
 @click.option('--target-table', default='yellow_taxi_data', help='Target table name')
 @click.option('--chunksize', default=100000, type=int, help='Number of rows per insert')
-def run(pg_user, pg_pass, pg_host, pg_port, pg_db, file_path, target_table, chunksize):
+def run(pg_user, pg_pass, pg_host, pg_port, pg_db, file_path, lookup_path, target_table, chunksize):
     
     if not os.path.exists(file_path):
         print(f"Error: File {file_path} not found.")
@@ -37,6 +38,17 @@ def run(pg_user, pg_pass, pg_host, pg_port, pg_db, file_path, target_table, chun
     for i in tqdm(range(0, len(df), chunksize)):
         chunk = df.iloc[i:i+chunksize]
         chunk.to_sql(name=target_table, con=engine, if_exists='append')
+
+    if os.path.exists(lookup_path):
+        print(f"Reading lookup data from {lookup_path}...")
+        df_zones = pd.read_csv(lookup_path)
+        
+        # Zones are small, no need for tqdm/chunking
+        print("Ingesting zone lookup table...")
+        df_zones.to_sql(name='zones', con=engine, if_exists='replace', index=False)
+        print("Zones ingested successfully.")
+    else:
+        print(f"Warning: Lookup file {lookup_path} not found.")
 
     print("Successfully ingested data into PostgreSQL.")
 
