@@ -1,0 +1,39 @@
+id: 04_postgres_taxi_range
+namespace: zoomcamp
+
+inputs:
+  - id: taxi
+    type: SELECT
+    values: [yellow, green]
+    defaults: yellow
+
+  - id: year
+    type: SELECT
+    values: ["2019", "2020", "2021"]
+    defaults: "2019"
+
+  - id: month_start
+    type: INT
+    defaults: 1
+
+  - id: month_end
+    type: INT
+    defaults: 11
+
+tasks:
+  - id: iterate_months
+    type: io.kestra.plugin.core.flow.EachSequential
+    # This creates a list of numbers from month_start to month_end
+    value: "{{ range(inputs.month_start, inputs.month_end) }}" #range seems to be inclusive
+    tasks:
+      - id: run_child_flow
+        type: io.kestra.plugin.core.flow.Subflow
+        flowId: taxi_ingest_child
+        namespace: zoomcamp
+        wait: true
+        transmitFailed: true
+        inputs:
+          taxi: "{{ inputs.taxi }}"
+          year: "{{ inputs.year }}"
+          # We use | format to turn '1' into '01' to match the file names
+          month: "{{ taskrun.value | numberformat('00') }}"
