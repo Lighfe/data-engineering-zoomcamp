@@ -212,4 +212,5 @@ __marimo__/
 .secrets/
 *.json
 .env_encoded
+profiles.yml
 
